@@ -1,0 +1,13 @@
+{
+  "name": "intersvyaz/address-db",
+  "type": "project",
+  "minimum-stability": "dev",
+  "require": {
+    "php": ">=7.3.0",
+    "elasticsearch/elasticsearch": "^6.0",
+    "josegonzalez/dotenv": "^3.2",
+    "ext-iconv": "*",
+    "ext-pdo": "*",
+    "ext-redis": "*"
+  }
+}

@@ -1,0 +1,103 @@
+version: '3'
+
+#networks:
+#  elk:
+
+volumes:
+  elasticsearch:
+    driver: local
+  mysqlsocket:
+    driver: local
+
+services:
+
+  #  elasticsearch:
+  #    image: elasticsearch
+  #    build:
+  #      context: ./docker/esdata
+  #    environment:
+  #    - discovery.type=single-node
+  #    networks:
+  #      elk: null
+  #    ports:
+  #    - 10.80.32.67:9200:9200
+  #    restart: unless-stopped
+  #    volumes:
+  #    - ./docker/esdata:/usr/share/elasticsearch/data
+  #    - ./docker/elasticsearch/config:/usr/share/elasticsearch/config
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.2
+    #    container_name: elasticsearch
+    environment:
+    #    - cluster.name=docker-cluster
+    #    - bootstrap.memory_lock=true
+    #    - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    - discovery.type=single-node
+    #    ulimits:
+    #      memlock:
+    #        soft: -1
+    #        hard: -1
+    volumes:
+    - ./docker/esdata:/usr/share/elasticsearch/data
+    ports:
+    - 10.80.32.67:9200:9200
+  #    networks:
+  #    - elk
+
+  kibana:
+    depends_on:
+    - elasticsearch
+    environment:
+      ELASTICSEARCH_URL: http://10.80.32.67:9200
+    image: docker.elastic.co/kibana/kibana-oss:6.4.1
+    #    networks:
+    #      elk: null
+    ports:
+    - 5601:5601
+    restart: unless-stopped
+
+  php-fpm:
+    build:
+      context: ./docker/php
+    volumes:
+    - .:/var/www
+    - ~/.composer:/root/.composer
+    - mysqlsocket:/var/run/mysqld/mysqld.sock
+    env_file:
+    - .env
+    environment:
+    - DOCKER_DEV=true
+    restart: on-failure
+
+  redis:
+    image: redis:5
+    ports:
+    - 6379:6379
+  #    networks:
+  #    - elk
+
+  mysql:
+    image: mariadb:latest
+    ports:
+    - 3306:3306
+    volumes:
+    - ./docker/mysql:/var/lib/mysql
+    environment:
+    - MYSQL_ROOT_PASSWORD=password
+
+  nginx:
+    # используем последний стабильный образ nginx
+    image: nginx:alpine
+    restart: always
+    # маршрутизируем порты
+    ports:
+    - "80:80"
+    - "443:443"
+    # монтируем директории, слева директории на основной машине, справа - куда они монтируются в контейнере
+    volumes:
+    - ./docker/hosts:/etc/nginx/conf.d
+    - ./.:/var/www
+    # nginx должен общаться с php контейнером
+    links:
+    - php-fpm
